@@ -9,6 +9,9 @@ export default function App() {
 
   useEffect(() => {
     const ctx = canvasRef.current.getContext("2d");
+    ctx.lineWidth = 2; // spessore della penna
+    ctx.lineCap = "round"; // estremità arrotondate
+
     socket.on("draw", (data) => {
       const { x, y } = data;
       ctx.lineTo(x, y);
@@ -16,14 +19,32 @@ export default function App() {
     });
   }, []);
 
-  const handleMouseMove = (e) => {
-    if (!isDrawing) return;
+  const handleMouseDown = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
+
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.beginPath();       // inizia un nuovo path
+    ctx.moveTo(x, y);      // sposta il punto iniziale
+    setIsDrawing(true);
+  };
+
+  const handleMouseUp = () => {
+    setIsDrawing(false);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDrawing) return;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
     const ctx = canvasRef.current.getContext("2d");
     ctx.lineTo(x, y);
     ctx.stroke();
+
     socket.emit("draw", { x, y });
   };
 
@@ -34,8 +55,8 @@ export default function App() {
         width={800}
         height={600}
         className="bg-white border"
-        onMouseDown={() => setIsDrawing(true)}
-        onMouseUp={() => setIsDrawing(false)}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
         onMouseMove={handleMouseMove}
       />
     </div>
