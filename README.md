@@ -51,7 +51,7 @@ cd server
 npm install
 cp .env.example .env
 # Fill in your MongoDB connection string in .env
-node server.js
+node server.mjs
 
 
 Backend runs on http://localhost:5000
