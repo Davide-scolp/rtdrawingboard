@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
+// Connetti al backend Render
 const socket = io("https://rtdrawingboard.onrender.com");
 
 export default function App() {
@@ -9,9 +10,11 @@ export default function App() {
 
   useEffect(() => {
     const ctx = canvasRef.current.getContext("2d");
-    ctx.lineWidth = 2; // spessore della penna
-    ctx.lineCap = "round"; // estremità arrotondate
+    ctx.lineWidth = 2;      // spessore della penna
+    ctx.lineCap = "round";  // estremità arrotondate
+    ctx.strokeStyle = "red"; // colore rosso della penna
 
+    // Gestione disegno ricevuto dagli altri utenti
     socket.on("draw", (data) => {
       const { x, y } = data;
       ctx.lineTo(x, y);
@@ -25,8 +28,9 @@ export default function App() {
     const y = e.clientY - rect.top;
 
     const ctx = canvasRef.current.getContext("2d");
-    ctx.beginPath();       // inizia un nuovo path
-    ctx.moveTo(x, y);      // sposta il punto iniziale
+    ctx.beginPath();       // inizia nuovo path
+    ctx.moveTo(x, y);      // punto iniziale
+    ctx.strokeStyle = "red"; // assicura colore rosso
     setIsDrawing(true);
   };
 
@@ -45,6 +49,7 @@ export default function App() {
     ctx.lineTo(x, y);
     ctx.stroke();
 
+    // Invia coordinate agli altri utenti
     socket.emit("draw", { x, y });
   };
 
