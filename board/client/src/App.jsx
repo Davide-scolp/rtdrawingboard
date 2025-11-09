@@ -7,50 +7,73 @@ const socket = io("https://rtdrawingboard.onrender.com");
 export default function App() {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const lastPointRef = useRef(null); // punto precedente per disegnare correttamente
 
   useEffect(() => {
     const ctx = canvasRef.current.getContext("2d");
-    ctx.lineWidth = 2;      // spessore della penna
-    ctx.lineCap = "round";  // estremità arrotondate
-    ctx.strokeStyle = "red"; // colore rosso della penna
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "red";
 
-    // Gestione disegno ricevuto dagli altri utenti
+    // Ricezione dati da altri utenti
     socket.on("draw", (data) => {
-      const { x, y } = data;
-      ctx.lineTo(x, y);
-      ctx.stroke();
+      const { x, y, prevX, prevY } = data;
+      if (prevX != null && prevY != null) {
+        ctx.beginPath();
+        ctx.moveTo(prevX, prevY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      }
     });
   }, []);
 
-  const handleMouseDown = (e) => {
+  const getCoordinates = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    if (e.touches) { // touch device
+      const touch = e.touches[0];
+      return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    } else { // mouse
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+  };
 
+  const handleStart = (e) => {
+    const { x, y } = getCoordinates(e);
     const ctx = canvasRef.current.getContext("2d");
-    ctx.beginPath();       // inizia nuovo path
-    ctx.moveTo(x, y);      // punto iniziale
-    ctx.strokeStyle = "red"; // assicura colore rosso
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.strokeStyle = "red";
+
+    lastPointRef.current = { x, y };
     setIsDrawing(true);
   };
 
-  const handleMouseUp = () => {
+  const handleEnd = () => {
     setIsDrawing(false);
+    lastPointRef.current = null;
   };
 
-  const handleMouseMove = (e) => {
+  const handleMove = (e) => {
     if (!isDrawing) return;
-
-    const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
+    const { x, y } = getCoordinates(e);
     const ctx = canvasRef.current.getContext("2d");
-    ctx.lineTo(x, y);
-    ctx.stroke();
 
-    // Invia coordinate agli altri utenti
-    socket.emit("draw", { x, y });
+    if (lastPointRef.current) {
+      ctx.beginPath();
+      ctx.moveTo(lastPointRef.current.x, lastPointRef.current.y);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+
+      // invia coordinate al backend con punto precedente
+      socket.emit("draw", {
+        x,
+        y,
+        prevX: lastPointRef.current.x,
+        prevY: lastPointRef.current.y,
+      });
+    }
+
+    lastPointRef.current = { x, y };
   };
 
   return (
@@ -60,9 +83,12 @@ export default function App() {
         width={800}
         height={600}
         className="bg-white border"
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseMove={handleMouseMove}
+        onMouseDown={handleStart}
+        onMouseUp={handleEnd}
+        onMouseMove={handleMove}
+        onTouchStart={handleStart}
+        onTouchEnd={handleEnd}
+        onTouchMove={handleMove}
       />
     </div>
   );
