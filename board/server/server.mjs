@@ -22,6 +22,10 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("draw", data);
   });
 
+  socket.on("clear", () => {
+    io.emit("clear");
+  });
+
   socket.on("disconnect", () => {
     console.log("🔴 Utente disconnesso:", socket.id);
   });
